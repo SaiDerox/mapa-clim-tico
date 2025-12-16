@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapa Climático</title>
+  <link rel="icon" href="\imagenes\image.png" type="image/png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Estilo general */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to right, #3e86c5, #1d64a2);
+      color: #fff;
+      height: 100vh;
+      overflow: hidden;
+      transition: background 0.5s ease;
+    }
+
+    /* Contenedor principal */
+    .main-container {
+      display: flex;
+      height: 100vh;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    /* Panel derecho - Resumen climático */
+    .weather-panel {
+      width: 400px;
+      background: rgba(42, 220, 129, 0.9);
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .weather-panel h1 {
+      font-size: 28px;
+      margin-bottom: 20px;
+      text-align: center;
+      color: #fff;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Buscador */
+    .search-box {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    input {
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 25px;
+      outline: none;
+      background: #97c5ef;
+      color: #333;
+      text-align: center;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    button {
+      padding: 12px;
+      font-size: 17px;
+      border: none;
+      border-radius: 25px;
+      background: #49e62f;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    button:hover {
+      background: #dce85f;
+      transform: scale(1.05);
+    }
+
+    /* Subtítulo */
+    .subtitle {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 20px 0 15px 0;
+      text-align: center;
+      color: #fff;
+    }
+
+    /* Contenedor del clima */
+    #weather {
+      flex: 1;
+      padding: 20px;
+      border-radius: 15px;
+      background: rgba(95, 225, 232, 0.9);
+      box-shadow: 0 4px 15px rgba(120, 64, 195, 0.4);
+      transition: all 0.5s ease;
+      overflow-y: auto;
+    }
+
+    #weather h2 {
+      font-size: 24px;
+      margin-bottom: 15px;
+      color: #fff;
+    }
+
+    #weather p {
+      font-size: 18px;
+      margin: 12px 0;
+      color: #fff;
+    }
+
+    #weather img {
+      width: 100px;
+      margin: 10px 0;
+    }
+
+    /* Panel izquierdo - Mapa */
+    .map-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .map-container h1 {
+      font-size: 32px;
+      margin-bottom: 20px;
+      text-align: center;
+      color: #333;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #map {
+      flex: 1;
+      border: 5px solid #4CAF50;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Placeholder inicial */
+    .placeholder {
+      text-align: center;
+      color: #666;
+      padding: 20px;
+      font-size: 16px;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .main-container {
+        flex-direction: column;
+      }
+
+      .weather-panel {
+        width: 100%;
+        max-height: 50%;
+      }
+
+      .map-container {
+        max-height: 50%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <!-- Panel derecho - Resumen climático -->
+    <div class="weather-panel">
+      <h1>🌥 Consulta el Clima</h1>
+      
+      <div class="search-box">
+        <input type="text" id="city" placeholder="🌐 Ingresa una ciudad" onkeypress="if(event.key === 'Enter') getWeather()">
+        <button onclick="getWeather()">🔍 Buscar</button>
+      </div>
+
+      <div class="subtitle">📊 Resumen Climático</div>
+      
+      <div id="weather">
+        <p class="placeholder">Ingresa una ciudad para ver el clima en tiempo real</p>
+      </div>
+    </div>
+
+    <!-- Panel izquierdo - Mapa -->
+    <div class="map-container">
+      <h1>🗺️ Mapa Climático</h1>
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const API_KEY = "41f9db851a90d5e6e1f3e3d8c5ae9efa";
+    let myMap;
+    let currentMarker;
+
+    // Inicializar el mapa
+    function initMap() {
+      myMap = L.map('map').setView([19.432608, -99.133209], 12);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(myMap);
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function (position) {
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
+            const userLocation = [userLat, userLng];
+
+            currentMarker = L.marker(userLocation).addTo(myMap);
+            currentMarker.bindPopup("<b>📍 Tu ubicación</b>").openPopup();
+            myMap.setView(userLocation, 12);
+          },
+          function () {
+            console.log("No se pudo obtener la ubicación automática");
+          }
+        );
+      }
+    }
+
+    // Obtener clima y actualizar mapa
+    async function getWeather() {
+      const city = document.getElementById("city").value;
+      if (!city) return alert("⚠ Ingresa una ciudad");
+      
+      const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric&lang=es`;
+      
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.cod !== 200) throw new Error(data.message);
+        
+        const weatherDescription = data.weather[0].description.toLowerCase();
+        const weatherContainer = document.getElementById("weather");
+
+        // Cambiar colores según el clima
+        if (weatherDescription.includes("soleado") || weatherDescription.includes("claro") || weatherDescription.includes("despejado")) {
+          document.body.style.background = "linear-gradient(to right, #ecb23f, #fd9d0f)";
+          weatherContainer.style.backgroundColor = "#fd9d0f";
+          weatherContainer.style.color = "#FFFFFF";
+        } else if (weatherDescription.includes("nublado") || weatherDescription.includes("nubes")) {
+          document.body.style.background = "linear-gradient(to right, #90A4AE, #6c7b81)";
+          weatherContainer.style.backgroundColor = "#6c7b81";
+          weatherContainer.style.color = "#FFFFFF";
+        } else if (weatherDescription.includes("lluvioso") || weatherDescription.includes("lluvia")) {
+          document.body.style.background = "linear-gradient(to right, #2196F3, #0d32a8)";
+          weatherContainer.style.backgroundColor = "#0d32a8";
+          weatherContainer.style.color = "#FFFFFF";
+        } else if (weatherDescription.includes("niebla") || weatherDescription.includes("bruma")) {
+          document.body.style.background = "linear-gradient(to right, #437f0a, #086b1c)";
+          weatherContainer.style.backgroundColor = "#086b1c";
+          weatherContainer.style.color = "#FFFFFF";
+        } else {
+          document.body.style.background = "linear-gradient(to right, #ba13bd, #3e0c83)";
+          weatherContainer.style.backgroundColor = "#3e0c83";
+          weatherContainer.style.color = "#FFFFFF";
+        }
+        
+        // Mostrar información del clima
+        document.getElementById("weather").innerHTML = `
+          <h2>${data.name}, ${data.sys.country}</h2>
+          <p>🌡 ${data.main.temp}°C</p>
+          <p>🌬 Sensación térmica: ${data.main.feels_like}°C</p>
+          <p>🌫️ Presión del aire: ${data.main.pressure} hPa</p>
+          <p>💨 Velocidad del aire: ${data.wind.speed} m/s</p>
+          <p>💧 Humedad: ${data.main.humidity}%</p>
+          <p>${data.weather[0].description}</p>
+          <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png">
+        `;
+
+        // Actualizar mapa con la ubicación de la ciudad
+        const lat = data.coord.lat;
+        const lon = data.coord.lon;
+        const cityLocation = [lat, lon];
+
+        if (currentMarker) {
+          myMap.removeLayer(currentMarker);
+        }
+
+        currentMarker = L.marker(cityLocation).addTo(myMap);
+        currentMarker.bindPopup(`
+          <b>${data.name}, ${data.sys.country}</b><br>
+          🌡 ${data.main.temp}°C<br>
+          ${data.weather[0].description}
+        `).openPopup();
+
+        myMap.setView(cityLocation, 12);
+
+      } catch (error) {
+        document.getElementById("weather").innerHTML = `<p style="color:red;">❌ Error: ${error.message}</p>`;
+      }
+    }
+
+    // Inicializar mapa al cargar la página
+    initMap();
+  </script>
+</body>
+</html>
